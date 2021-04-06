@@ -27,7 +27,7 @@ from .view import views_dicts, _lh_views_dict
 from .callback import (ShowView, TimeCallBack, SmartCallBack,
                        UpdateLUT, UpdateColorbarScale)
 
-from ..utils import _show_help, _get_color_list, concatenate_images
+from ..utils import _show_help_fig, _get_color_list, concatenate_images
 from .._3d import _process_clim, _handle_time, _check_views
 
 from ...externals.decorator import decorator
@@ -290,6 +290,11 @@ class Brain(object):
        and ``decimate`` (level of decimation between 0 and 1 or None) of the
        brain's silhouette to display. If True, the default values are used
        and if False, no silhouette will be displayed. Defaults to False.
+    theme : str | path-like
+        Can be "auto" (default), "light", or "dark" or a path-like to a
+        custom stylesheet. For Dark-Mode and automatic Dark-Mode-Detection,
+        :mod:`qdarkstyle` respectively and `darkdetect
+        <https://github.com/albertosottile/darkdetect>`__ is required.
     show : bool
         Display the window as soon as it is ready. Defaults to True.
 
@@ -368,7 +373,8 @@ class Brain(object):
                  foreground=None, figure=None, subjects_dir=None,
                  views='auto', offset='auto', show_toolbar=False,
                  offscreen=False, interaction='trackball', units='mm',
-                 view_layout='vertical', silhouette=False, show=True):
+                 view_layout='vertical', silhouette=False, theme='auto',
+                 show=True):
         from ..backends.renderer import backend, _get_renderer
         from .._3d import _get_cmap
         from matplotlib.colors import colorConverter
@@ -413,8 +419,10 @@ class Brain(object):
         if len(size) not in (1, 2):
             raise ValueError('"size" parameter must be an int or length-2 '
                              'sequence of ints.')
-        self._size = size if len(size) == 2 else size * 2  # 1-tuple to 2-tuple
+        size = size if len(size) == 2 else size * 2  # 1-tuple to 2-tuple
         subjects_dir = get_subjects_dir(subjects_dir)
+
+        self.theme = theme
 
         self.time_viewer = False
         self._hemi = hemi
@@ -445,9 +453,7 @@ class Brain(object):
             self.silhouette = True
         else:
             self.silhouette = silhouette
-        # for now only one color bar can be added
-        # since it is the same for all figures
-        self._colorbar_added = False
+        self._scalar_bar = None
         # for now only one time label can be added
         # since it is the same for all figures
         self._time_label_added = False
@@ -468,12 +474,12 @@ class Brain(object):
             offset = (surf == 'inflated')
         offset = None if (not offset or hemi != 'both') else 0.0
 
-        self._renderer = _get_renderer(name=self._title, size=self._size,
+        self._renderer = _get_renderer(name=self._title, size=size,
                                        bgcolor=background,
                                        shape=shape,
                                        fig=figure)
-
-        self._renderer._window_initialize(self._clean)
+        self._renderer._window_close_connect(self._clean)
+        self._renderer._window_set_theme(theme)
         self.plotter = self._renderer.plotter
 
         self._setup_canonical_rotation()
@@ -604,6 +610,7 @@ class Brain(object):
         self.color_list.remove("#7f7f7f")
         self.color_cycle = _ReuseCycle(self.color_list)
         self.mpl_canvas = None
+        self.help_canvas = None
         self.rms = None
         self.picked_patches = {key: list() for key in all_keys}
         self.picked_points = {key: list() for key in all_keys}
@@ -652,9 +659,10 @@ class Brain(object):
         self._configure_menu()
         self._configure_status_bar()
         self._configure_playback()
+        self._configure_help()
         # show everything at the end
         self.toggle_interface()
-        self._renderer._window_show(self._size)
+        self._renderer.show()
 
         # sizes could change, update views
         for hemi in ('lh', 'rh'):
@@ -692,14 +700,12 @@ class Brain(object):
         # Qt LeaveEvent requires _Iren so we use _FakeIren instead of None
         # to resolve the ref to vtkGenericRenderWindowInteractor
         self.plotter._Iren = _FakeIren()
-        if getattr(self.plotter, 'scalar_bar', None) is not None:
-            self.plotter.scalar_bar = None
         if getattr(self.plotter, 'picker', None) is not None:
             self.plotter.picker = None
         # XXX end PyVista
         for key in ('plotter', 'window', 'dock', 'tool_bar', 'menu_bar',
                     'status_bar', 'interactor', 'mpl_canvas', 'time_actor',
-                    'picked_renderer', 'act_data_smooth',
+                    'picked_renderer', 'act_data_smooth', '_scalar_bar',
                     'actions', 'widgets', 'geo', '_data'):
             setattr(self, key, None)
 
@@ -719,7 +725,7 @@ class Brain(object):
             self.visibility = value
 
         # update tool bar and dock
-        with self._renderer._window_ensure_minimum_sizes(self._size):
+        with self._renderer._window_ensure_minimum_sizes():
             if self.visibility:
                 self._renderer._dock_show()
                 self._renderer._tool_bar_update_button_icon(
@@ -824,12 +830,11 @@ class Brain(object):
             self.time_actor.GetTextProperty().BoldOn()
 
     def _configure_scalar_bar(self):
-        if self._colorbar_added:
-            scalar_bar = self.plotter.scalar_bar
-            scalar_bar.SetOrientationToVertical()
-            scalar_bar.SetHeight(0.6)
-            scalar_bar.SetWidth(0.05)
-            scalar_bar.SetPosition(0.02, 0.2)
+        if self._scalar_bar is not None:
+            self._scalar_bar.SetOrientationToVertical()
+            self._scalar_bar.SetHeight(0.6)
+            self._scalar_bar.SetWidth(0.05)
+            self._scalar_bar.SetPosition(0.02, 0.2)
 
     def _configure_dock_time_widget(self, layout=None):
         len_time = len(self._data['time']) - 1
@@ -1225,6 +1230,7 @@ class Brain(object):
 
     def _configure_tool_bar(self):
         self._renderer._tool_bar_load_icons()
+        self._renderer._tool_bar_set_theme(self.theme)
         self._renderer._tool_bar_initialize()
         self._renderer._tool_bar_add_screenshot_button(
             name="screenshot",
@@ -1485,7 +1491,11 @@ class Brain(object):
         del mesh
 
         # from the picked renderer to the subplot coords
-        rindex = self._renderer._all_renderers.index(self.picked_renderer)
+        try:
+            lst = self._renderer._all_renderers._renderers
+        except AttributeError:
+            lst = self._renderer._all_renderers
+        rindex = lst.index(self.picked_renderer)
         row, col = self._renderer._index_to_loc(rindex)
 
         actors = list()
@@ -1641,8 +1651,7 @@ class Brain(object):
             self.time_line.set_xdata(current_time)
             self.mpl_canvas.update_plot()
 
-    def help(self):
-        """Display the help window."""
+    def _configure_help(self):
         pairs = [
             ('?', 'Display help window'),
             ('i', 'Toggle interface'),
@@ -1660,12 +1669,19 @@ class Brain(object):
         text1, text2 = zip(*pairs)
         text1 = '\n'.join(text1)
         text2 = '\n'.join(text2)
-        _show_help(
+        self.help_canvas = self._renderer._window_get_simple_canvas(
+            width=5, height=2, dpi=80)
+        _show_help_fig(
             col1=text1,
             col2=text2,
-            width=5,
-            height=2,
+            fig_help=self.help_canvas.fig,
+            ax=self.help_canvas.axes,
+            show=False,
         )
+
+    def help(self):
+        """Display the help window."""
+        self.help_canvas.show()
 
     def _clear_callbacks(self):
         if not hasattr(self, 'callbacks'):
@@ -1947,12 +1963,11 @@ class Brain(object):
                 )
                 self._data['time_actor'] = time_actor
                 self._time_label_added = True
-            if colorbar and not self._colorbar_added and do:
+            if colorbar and self._scalar_bar is None and do:
                 kwargs = dict(source=actor, n_labels=8, color=self._fg_color,
                               bgcolor=self._brain_color[:3])
                 kwargs.update(colorbar_kwargs or {})
-                self._renderer.scalarbar(**kwargs)
-                self._colorbar_added = True
+                self._scalar_bar = self._renderer.scalarbar(**kwargs)
             self._renderer.set_camera(**views_dicts[hemi][v])
 
         # 4) update the scalar bar and opacity
@@ -2650,9 +2665,6 @@ class Brain(object):
         # update our values
         rng = self._cmap_range
         ctable = self._data['ctable']
-        # in testing, no plotter; if colorbar=False, no scalar_bar
-        scalar_bar = getattr(
-            getattr(self._renderer, 'plotter', None), 'scalar_bar', None)
         for hemi in ['lh', 'rh', 'vol']:
             hemi_data = self._data.get(hemi)
             if hemi_data is not None:
@@ -2663,9 +2675,8 @@ class Brain(object):
                                         opacity=alpha,
                                         rng=rng)
                     self._renderer._set_colormap_range(
-                        mesh._actor, ctable, scalar_bar, rng,
+                        mesh._actor, ctable, self._scalar_bar, rng,
                         self._brain_color)
-                    scalar_bar = None
 
                 grid_volume_pos = hemi_data.get('grid_volume_pos')
                 grid_volume_neg = hemi_data.get('grid_volume_neg')
@@ -2673,15 +2684,13 @@ class Brain(object):
                     if grid_volume is not None:
                         self._renderer._set_volume_range(
                             grid_volume, ctable, hemi_data['alpha'],
-                            scalar_bar, rng)
-                        scalar_bar = None
+                            self._scalar_bar, rng)
 
                 glyph_actor = hemi_data.get('glyph_actor')
                 if glyph_actor is not None:
                     for glyph_actor_ in glyph_actor:
                         self._renderer._set_colormap_range(
-                            glyph_actor_, ctable, scalar_bar, rng)
-                        scalar_bar = None
+                            glyph_actor_, ctable, self._scalar_bar, rng)
         if self.time_viewer:
             with self._no_lut_update(f'update_lut {args}'):
                 for key in ('fmin', 'fmid', 'fmax'):

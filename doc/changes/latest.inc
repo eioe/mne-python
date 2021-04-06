@@ -19,11 +19,17 @@ Current (0.23.dev0)
 
 .. |New Contributor| replace:: **New Contributor**
 
+.. |Jack Zhang| replace:: **Jack Zhang**
+
+.. |Sumalyo Datta| replace:: **Sumalyo Datta**
+
 .. |Anna Padee| replace:: **Anna Padee**
 
 .. |Richard Koehler| replace:: **Richard Koehler**
 
 .. |Zhi Zhang| replace:: **Zhi Zhang**
+
+.. |Rotem Falach| replace:: **Rotem Falach**
 
 .. |Andres Rodriguez| replace:: **Andres Rodriguez**
 
@@ -37,13 +43,45 @@ Current (0.23.dev0)
 
 .. |Valerii Chirkov| replace:: **Valerii Chirkov**
 
+.. |Matteo Anelli| replace:: **Matteo Anelli**
+
+.. |Apoorva Karekal| replace:: **Apoorva Karekal**
+
+.. |Cora Kim| replace:: **Cora Kim**
+
+.. |Silvia Cotroneo| replace:: **Silvia Cotroneo**
+
+.. |Ram Pari| replace:: **Ram Pari**
+
+.. |Erica Peterson| replace:: **Erica Peterson**
+
+.. |Maggie Clarke| replace:: **Maggie Clarke**
+
 Enhancements
 ~~~~~~~~~~~~
+- Add CSV, TSV, and XYZ support to :func:`mne.channels.read_custom_montage` (:gh:`9203` **by new contributor** |Jack Zhang|_)
+
+- Add HTML representation for `~mne.Epochs` in Jupyter Notebooks (:gh:`9174` by |Valerii Chirkov|_)
+
+- Speed up :func:`mne.viz.plot_ica_properties` by refactoring (:gh:`9174` **by new contributor** |Valerii Chirkov|_)
+
+- Add ``apply_function`` method to epochs and evoked objects (:gh:`9088` **by new contributor** |Erica Peterson|_ and `Victoria Peterson`_)
+
+- New tutorial for function :func:`mne.make_fixed_length_epochs` (:gh:`9156` **by new contributor** |Erica Peterson|_)
+
+- Add different colors for each volume source space in :func:`mne.viz.plot_alignment` (:gh:`9043` **by new contributor** |Valerii Chirkov|_)
+
+- Add ``overlap`` parameter to :func:`mne.make_fixed_length_epochs` to allow creating overlapping fixed length epochs (:gh:`9096` **by new contributor** |Silvia Cotroneo|_)
+
+- Add :meth:`mne.Dipole.to_mni` for more convenient  dipole.pos to MNI conversion (:gh:`9043` **by new contributor** |Valerii Chirkov|_)
+
 - Update citations in maxwell.py (:gh:`9043` **by new contributor** |Valerii Chirkov|_)
 
 - New Tutorial for analyzing frequency-tagging data (:gh:`8867` **by new contributor** |Dominik Welke|_ and `kalenkovich`_)
 
 - Add dbs as new channel type for deep brain stimulation (DBS) recordings (:gh:`8739` **by new contributor** |Richard Koehler|_)
+
+- Add some preprocessing functions to the EEGLAB migration guide (:gh:`9169` **by new contributor** |Apoorva Karekal|_)
 
 - Add :func:`mne.chpi.extract_chpi_locs_kit` to read cHPI coil locations from KIT/Yokogawa data (:gh:`` **by new contributor** |Matt Sanderson|_, `Robert Seymour`_, and `Eric Larson`_)
 
@@ -113,8 +151,39 @@ Enhancements
 
 - `mne.viz.plot_drop_log` and :meth:`mne.Epochs.plot_drop_log` now omit displaying the subject name in the title if ``subject=None`` is passed (:gh:`9015` by `Richard Höchenberger`_)
 
+- Plot ECoG tutorial now uses a real epilepsy seizure dataset and visualizes the seizure onset (:gh:`9087` by `Eric Larson`_, `Adam Li`_, `Alex Rockhill`_ and `Liberty Hamilton`_)
+
+- Improve documentation of Report-Class (:gh:`9113` by `Martin Schulz`_)
+
+- Add :func:`mne.channels.DigMontage.add_estimated_fiducials` which will add LPA, RPA and Nasion fiducial points to the ``DigMontage`` object in ``mri`` coordinate frame (:gh:`9118` by `Adam Li`_)
+
+- :func:`mne.io.anonymize_info` now anonymizes also sex and hand fields when ``keep_his`` is ``False`` (:gh:`9103`, :gh:`9175` by |Rotem Falach|_ and `Richard Höchenberger`_)
+
+- Add parameter ``theme`` to :class:`mne.viz.Brain` for optional Dark-Mode (:gh:`9149` by `Martin Schulz`_, `Guillaume Favelier`_)
+
+- Add first_samp support for raw simulations with `mne.simulation.simulate_raw` and `mne.simulation.SourceSimulator` (:gh:`9166` by `Steven Bierer`_)
+
+- `~mne.Evoked` gained a ``baseline`` attribute that is automatically assembled based on the baseline of the averaged `~mne.Epochs` (:gh:`9210` by `Richard Höchenberger`_)
+
+- Add ``units`` parameter to :meth:`mne.io.Raw.get_data` to return data in the desired unit (:gh:`9136` by `Johann Benerradi`_ and `Stefan Appelhoff`_)
+
+- Add :func:`mne.preprocessing.equalize_bads` to interpolate bad channels in a list of `~mne.Evoked`, `~mne.Epochs` or `~mne.io.Raw` having different sets of bad channels (:gh:`9241` by `Alex Gramfort`_)
+
+
 Bugs
 ~~~~
+- Fix bug with :func:`mne.io.read_raw_edf` where µV was not correctly recognized (:gh:`9187` **by new contributor** |Sumalyo Datta|_)
+
+- Fix bug with :func:`mne.viz.plot_compare_evokeds` did not check type of combine. (:gh:`9151` **by new contributor** |Matteo Anelli|_)
+
+- Fix bug with :func:`mne.viz.plot_evoked_topo` where ``ylim`` was only being applied to the first channel in the dataset (:gh:`9162` **by new contributor** |Ram Pari|_ )
+
+- Fix bug with :func:`mne.Epochs.plot_image` allowing interactive zoom to work properly (:gh:`9152` by **by new contributor** |Maggie Clarke|_ and `Daniel McCloy`_)
+
+- Fix bug with :func:`mne.Epochs.plot_image` where the ``x_label`` was different depending on the evoked parameter (:gh:`9115` **by new contributor** |Matteo Anelli|_)
+
+- Fix bug with restricting :func:`mne.io.Raw.save` saving options to .fif and .fif.gz extensions (:gh:`9062` by |Valerii Chirkov|_)
+
 - Fix bug with :func:`mne.io.read_raw_kit` where missing marker coils were not handled (:gh:`8989` **by new contributor** |Judy D Zhu|_)
 
 - Fix bug with `mne.connectivity.spectral_connectivity` where time axis in Epochs data object was dropped. (:gh:`8839` **by new contributor** |Anna Padee|_)
@@ -197,6 +266,26 @@ Bugs
 
 - Fix :func:`mne.read_dipole` yielding :class:`mne.Dipole` objects that could not be indexed (:gh:`8963` by `Marijn van Vliet`_)
 
+- Fix bug when setting n_jobs > 1 in :func:`mne.Report.parse_folder` (:gh:`9109` by `Martin Schulz`_)
+
+- Fix bug with :func:`mne.Evoked.plot_image` where an incorrect clim parameter did not raise any error (:gh:`9115` **by new contributor** |Matteo Anelli|_)
+
+- Fix bug with :func:`mne.io.Raw.pick` where incorrect fnirs types were returned (:gh:`9178` by `Robert Luke`_)
+
+- Fix bug when passing both axes and picks to `mne.viz.plot_compare_evokeds` (:gh:`9252` by `Daniel McCloy`_)
+
+- Improved string representation of `~mne.Epochs` containing multiple event types; improved (and more mathematically correct) ``evoked.comment`` in the `mne.combine_evoked` output; and better (and often more concise) legend labels in the figures created via `~mne.viz.plot_compare_evokeds` (:gh:`9027` by `Richard Höchenberger`_)
+
+- :func:`mne.preprocessing.find_ecg_events` now correctly handles situation where no ECG activity could be detected, and correctly returns an empty array of ECG events (:gh:`9236` by `Richard Höchenberger`_)
+
 API changes
 ~~~~~~~~~~~
+- Introduced new ``'auto'`` settings for ``ICA.max_iter``. The old default ``max_iter=200`` will be removed in MNE-Python 0.24 (:gh:`9099` **by new contributor** |Cora Kim|_)
+
+- `mne.viz.plot_sensors_connectivity` now allows setting the colorbar label via the ``cbar_label`` parameter (:gh:`9248` by `Daniel McCloy`_)
+
 - ``mne.read_selection`` has been deprecated in favor of `mne.read_vectorview_selection`. ``mne.read_selection`` will be removed in MNE-Python 0.24 (:gh:`8870` by `Richard Höchenberger`_)
+
+- ``mne.beamformer.tf_dics`` has been deprecated and will be removed in MNE-Python 0.24 (:gh:`9122` by `Britta Westner`_)
+
+- Fitting `~mne.preprocessing.ICA` on baseline-corrected `~mne.Epochs`, and / or applying it on baseline-corrected `~mne.Epochs` or `~mne.Evoked` data will now display a warning. Users are advised to only baseline correct their data after cleaning is completed (:gh:`9033` by `Richard Höchenberger`_)

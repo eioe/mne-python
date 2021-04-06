@@ -7,6 +7,7 @@
 import base64
 import copy
 import glob
+import pickle
 from io import BytesIO
 import os
 import os.path as op
@@ -90,9 +91,11 @@ def test_render_report(renderer, tmpdir):
     raw.set_eeg_reference(projection=True)
     epochs = Epochs(raw, read_events(event_fname), 1, -0.2, 0.2)
     epochs.save(epochs_fname, overwrite=True)
-    # This can take forever (stall Travis), so let's make it fast
+    # This can take forever, so let's make it fast
     # Also, make sure crop range is wide enough to avoid rendering bug
-    evoked = epochs.average().crop(0.1, 0.2)
+    evoked = epochs.average()
+    with pytest.warns(RuntimeWarning, match='tmax is not in Evoked'):
+        evoked.crop(0.1, 0.2)
     evoked.save(evoked_fname)
 
     report = Report(info_fname=raw_fname_new, subjects_dir=subjects_dir,
@@ -623,6 +626,23 @@ def test_split_files(tmpdir, split_naming):
     report = Report()
     report.parse_folder(tmpdir, render_bem=False)
     assert len(report.fnames) == 1
+
+
+def test_survive_pickle(tmpdir):
+    """Testing functionality of Report-Object after pickling."""
+    tempdir = str(tmpdir)
+    raw_fname_new = op.join(tempdir, 'temp_raw.fif')
+    shutil.copyfile(raw_fname, raw_fname_new)
+
+    # Pickle report object to simulate multiprocessing with joblib
+    report = Report(info_fname=raw_fname_new)
+    pickled_report = pickle.dumps(report)
+    report = pickle.loads(pickled_report)
+
+    # Just test if no errors occur
+    report.parse_folder(tempdir, render_bem=False)
+    save_name = op.join(tempdir, 'report.html')
+    report.save(fname=save_name, open_browser=False)
 
 
 run_tests_if_main()

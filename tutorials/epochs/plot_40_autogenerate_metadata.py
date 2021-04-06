@@ -70,9 +70,9 @@ all_events, all_event_id = mne.events_from_annotations(raw)
 # or it might include events that occurred well outside a given epoch.
 #
 # Let us look at a concrete example. In the Flankers task of the ERP CORE
-# dataset, participants were required to respond to visual stimuli by
-# pressing a button. We're interested in looking at the visual evoked responses
-# (ERPs) of trials with correct responses. Assume that based on literature
+# dataset, participants were required to respond to visual stimuli by pressing
+# a button. We're interested in looking at the visual evoked responses (ERPs)
+# of trials with correct responses. Assume that based on literature
 # studies, we decide that responses later than 1500 ms after stimulus onset are
 # to be considered invalid, because they don't capture the neuronal processes
 # of interest here. We can approach this  in the following way with the help of
@@ -147,18 +147,18 @@ metadata
 # ``response/right``. We would like to map those to "correct" and "incorrect".
 # To make this easier, we can ask `~mne.epochs.make_metadata` to generate an
 # entirely **new** column that refers to the first response observed during the
-# given time interval. This works by passing a subset of the hierarchical
-# event descriptions (HEDs) used to name events via the ``keep_first``
+# given time interval. This works by passing a subset of the
+# :term:`hierarchical event descriptors` (HEDs, inspired by
+# :footcite:`BigdelyShamloEtAl2013`) used to name events via the ``keep_first``
 # parameter. For example, in the case of the HEDs ``response/left`` and
 # ``response/right``, we could pass ``keep_first='response'`` to generate a new
-# column, ``response``, containing the latency of the respective event.
-# This value pertains only the first (or, in this specific example: the only)
+# column, ``response``, containing the latency of the respective event. This
+# value pertains only the first (or, in this specific example: the only)
 # response, regardless of side (left or right). To indicate **which** event
 # type (here: response side) was matched, a second column is added:
-# ``first_recponse``. The values in this column are the event types sans
-# the string used for matching, as it is already encoded as the column name,
-# i.e. in our example, it we expect it to only contain ``'left'`` and
-# ``'right'``.
+# ``first_response``. The values in this column are the event types without the
+# string used for matching, as it is already encoded as the column name, i.e.
+# in our example, we expect it to only contain ``'left'`` and ``'right'``.
 
 keep_first = 'response'
 metadata, events, event_id = mne.epochs.make_metadata(
@@ -362,7 +362,7 @@ epochs = mne.Epochs(raw=raw, tmin=epochs_tmin, tmax=epochs_tmax,
 epochs.metadata.loc[epochs.metadata['last_stimulus'].isna(), :]
 
 ###############################################################################
-# Bummer! ☹️ It seems the very first two responses were recorded before the
+# Bummer! It seems the very first two responses were recorded before the
 # first stimulus appeared: the values in the ``stimulus`` column are ``None``.
 # There is a very simple way to select only those epochs that **do** have a
 # stimulus (i.e., are not ``None``):
@@ -430,3 +430,8 @@ ax.set_title('Channel: FCz')
 fig.suptitle('ERN (Difference Wave)', fontweight='bold')
 
 fig
+
+###############################################################################
+# References
+# ^^^^^^^^^^
+# .. footbibliography::

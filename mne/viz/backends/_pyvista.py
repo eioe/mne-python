@@ -23,8 +23,7 @@ import vtk
 
 from ._abstract import _AbstractRenderer
 from ._utils import (_get_colormap_from_array, _alpha_blend_background,
-                     ALLOWED_QUIVER_MODES, _init_qt_resources,
-                     _qt_disable_paint)
+                     ALLOWED_QUIVER_MODES, _init_qt_resources)
 from ...fixes import _get_args
 from ...transforms import apply_trans
 from ...utils import copy_base_doc_to_subclass_doc, _check_option
@@ -210,35 +209,6 @@ class _PyVistaRenderer(_AbstractRenderer):
         now = datetime.now()
         dt_string = now.strftime("_%Y-%m-%d_%H-%M-%S")
         return "MNE" + dt_string + ".png"
-
-    @contextmanager
-    def _ensure_minimum_sizes(self):
-        sz = self.figure.store['window_size']
-        # plotter:            pyvista.plotting.qt_plotting.BackgroundPlotter
-        # plotter.interactor: vtk.qt.QVTKRenderWindowInteractor.QVTKRenderWindowInteractor -> QWidget  # noqa
-        # plotter.app_window: pyvista.plotting.qt_plotting.MainWindow -> QMainWindow  # noqa
-        # plotter.frame:      QFrame with QVBoxLayout with plotter.interactor as centralWidget  # noqa
-        # plotter.ren_win:    vtkXOpenGLRenderWindow
-        self.plotter.interactor.setMinimumSize(*sz)
-        try:
-            yield  # show
-        finally:
-            # 1. Process events
-            _process_events(self.plotter)
-            _process_events(self.plotter)
-            # 2. Get the window and interactor sizes that work
-            win_sz = self.plotter.app_window.size()
-            ren_sz = self.plotter.interactor.size()
-            # 3. Undo the min size setting and process events
-            self.plotter.interactor.setMinimumSize(0, 0)
-            _process_events(self.plotter)
-            _process_events(self.plotter)
-            # 4. Resize the window and interactor to the correct size
-            #    (not sure why, but this is required on macOS at least)
-            self.plotter.window_size = (win_sz.width(), win_sz.height())
-            self.plotter.interactor.resize(ren_sz.width(), ren_sz.height())
-            _process_events(self.plotter)
-            _process_events(self.plotter)
 
     def _index_to_loc(self, idx):
         _ncols = self.figure._ncols
@@ -607,24 +577,24 @@ class _PyVistaRenderer(_AbstractRenderer):
 
     def scalarbar(self, source, color="white", title=None, n_labels=4,
                   bgcolor=None, **extra_kwargs):
+        if isinstance(source, vtk.vtkMapper):
+            mapper = source
+        elif isinstance(source, vtk.vtkActor):
+            mapper = source.GetMapper()
+        else:
+            mapper = None
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=FutureWarning)
             kwargs = dict(color=color, title=title, n_labels=n_labels,
                           use_opacity=False, n_colors=256, position_x=0.15,
                           position_y=0.05, width=0.7, shadow=False, bold=True,
                           label_font_size=22, font_family=self.font_family,
-                          background_color=bgcolor)
+                          background_color=bgcolor, mapper=mapper)
             kwargs.update(extra_kwargs)
-            self.plotter.add_scalar_bar(**kwargs)
+            return self.plotter.add_scalar_bar(**kwargs)
 
     def show(self):
         self.plotter.show()
-        if hasattr(self.plotter, "app_window"):
-            with _qt_disable_paint(self.plotter):
-                with self._ensure_minimum_sizes():
-                    self.plotter.app_window.show()
-            self.plotter.update()
-        return self.scene()
 
     def close(self):
         _close_3d_figure(figure=self.figure)
